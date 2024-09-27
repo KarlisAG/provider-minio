@@ -1,0 +1,14 @@
+apiVersion: minio.crossplane.io/v1alpha1
+kind: IdentityProvider
+metadata:
+  creationTimestamp: null
+  name: my-identity-provider
+spec:
+  forProvider:
+    clientId: 00000000-0000-0000-0000-00000000
+    clientSecret: superSecretPassword
+    configUrl: http://127.0.0.1
+  providerConfigRef:
+    name: provider-config
+status:
+  atProvider: {}

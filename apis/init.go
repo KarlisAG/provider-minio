@@ -6,6 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	miniov1 "github.com/vshn/provider-minio/apis/minio/v1"
+	miniov1alpha1 "github.com/vshn/provider-minio/apis/minio/v1alpha1"
 )
 
 // AddToSchemes may be used to add all resources defined in the project to a Scheme
@@ -15,6 +16,7 @@ func init() {
 	// Register the types with the Scheme so the components can map objects to GroupVersionKinds and back
 	AddToSchemes = append(AddToSchemes,
 		miniov1.SchemeBuilder.AddToScheme,
+		miniov1alpha1.SchemeBuilder.AddToScheme,
 		providerv1.SchemeBuilder.AddToScheme,
 	)
 }

@@ -18,6 +18,7 @@ import (
 
 	"github.com/vshn/provider-minio/apis"
 	miniov1 "github.com/vshn/provider-minio/apis/minio/v1"
+	miniov1alpha1 "github.com/vshn/provider-minio/apis/minio/v1alpha1"
 	providerv1 "github.com/vshn/provider-minio/apis/provider/v1"
 	"github.com/vshn/provider-minio/operator/minioutil"
 
@@ -39,6 +40,7 @@ func main() {
 	generateSecretSample()
 	generateUserSample()
 	generatePolicySample()
+	generateIdentityProviderSample()
 }
 
 func generateBucketSample() {
@@ -158,6 +160,33 @@ func newPolicySample() *miniov1.Policy {
 			},
 			ForProvider: miniov1.PolicyParameters{
 				AllowBucket: "bucket-local-dev",
+			},
+		},
+	}
+}
+
+func generateIdentityProviderSample() {
+	spec := newIdentityProviderSample()
+	serialize(spec, true)
+}
+
+func newIdentityProviderSample() *miniov1alpha1.IdentityProvider {
+	return &miniov1alpha1.IdentityProvider{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: miniov1alpha1.IdentityProviderGroupVersionKind.GroupVersion().String(),
+			Kind:       miniov1alpha1.IdentityProviderKind,
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-identity-provider",
+		},
+		Spec: miniov1alpha1.IdentityProviderSpec{
+			ResourceSpec: xpv1.ResourceSpec{
+				ProviderConfigReference: &xpv1.Reference{Name: "provider-config"},
+			},
+			ForProvider: miniov1alpha1.IdentityProviderParameters{
+				ClientId:     "00000000-0000-0000-0000-00000000",
+				ClientSecret: "superSecretPassword",
+				ConfigUrl:    "http://127.0.0.1",
 			},
 		},
 	}
