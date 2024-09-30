@@ -13,11 +13,6 @@ import (
 	controllerruntime "sigs.k8s.io/controller-runtime"
 )
 
-const (
-	// IdentityProviderCreatedAnnotationKey is the annotation name where we store the information that the identityProvider has been created.
-	IdentityProviderCreatedAnnotationKey string = "minio.crossplane.io/identityprovider-created"
-)
-
 func (i *identityProviderClient) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
 	log := controllerruntime.LoggerFrom(ctx)
 	log.V(1).Info("creating resource")
@@ -34,8 +29,6 @@ func (i *identityProviderClient) Create(ctx context.Context, mg resource.Managed
 		return managed.ExternalCreation{}, err
 	}
 
-	i.setLock(identityProvider)
-
 	return managed.ExternalCreation{}, i.emitCreationEvent(identityProvider)
 }
 
@@ -46,12 +39,6 @@ func (i *identityProviderClient) emitCreationEvent(identityProvider *miniov1alph
 		Message: "IdentityProvider successfully created",
 	})
 	return nil
-}
-
-func (i *identityProviderClient) setLock(identityProvider *miniov1alpha1.IdentityProvider) {
-	annotations := identityProvider.GetAnnotations()
-	annotations[IdentityProviderCreatedAnnotationKey] = "claimed"
-	identityProvider.SetAnnotations(annotations)
 }
 
 func (i *identityProviderClient) createIdentityProvider(ctx context.Context, identityProvider *miniov1alpha1.IdentityProvider) error {

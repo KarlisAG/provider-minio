@@ -21,12 +21,6 @@ func (i *identityProviderClient) Observe(ctx context.Context, mg resource.Manage
 		return managed.ExternalObservation{}, errNotIdentityProvider
 	}
 
-	_, ok = identityProvider.GetAnnotations()[IdentityProviderCreatedAnnotationKey]
-	if !ok {
-		// The identityProvider has not yet been created
-		return managed.ExternalObservation{}, nil
-	}
-
 	cfgType := madmin.OpenidIDPCfg
 	identityProviderList, err := i.ma.ListIDPConfig(ctx, cfgType)
 	if err != nil {
