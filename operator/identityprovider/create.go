@@ -4,12 +4,18 @@ import (
 	"context"
 	"strings"
 
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/event"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/minio/madmin-go/v3"
 	miniov1alpha1 "github.com/vshn/provider-minio/apis/minio/v1alpha1"
 	controllerruntime "sigs.k8s.io/controller-runtime"
+)
+
+const (
+	// IdentityProviderCreatedAnnotationKey is the annotation name where we store the information that the identityProvider has been created.
+	IdentityProviderCreatedAnnotationKey string = "minio.crossplane.io/identityprovider-created"
 )
 
 func (i *identityProviderClient) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
@@ -21,10 +27,14 @@ func (i *identityProviderClient) Create(ctx context.Context, mg resource.Managed
 		return managed.ExternalCreation{}, errNotIdentityProvider
 	}
 
+	identityProvider.SetConditions(xpv1.Creating())
+
 	err := i.createIdentityProvider(ctx, identityProvider)
 	if err != nil {
 		return managed.ExternalCreation{}, err
 	}
+
+	i.setLock(identityProvider)
 
 	return managed.ExternalCreation{}, i.emitCreationEvent(identityProvider)
 }
@@ -38,52 +48,35 @@ func (i *identityProviderClient) emitCreationEvent(identityProvider *miniov1alph
 	return nil
 }
 
+func (i *identityProviderClient) setLock(identityProvider *miniov1alpha1.IdentityProvider) {
+	annotations := identityProvider.GetAnnotations()
+	annotations[IdentityProviderCreatedAnnotationKey] = "claimed"
+	identityProvider.SetAnnotations(annotations)
+}
+
 func (i *identityProviderClient) createIdentityProvider(ctx context.Context, identityProvider *miniov1alpha1.IdentityProvider) error {
+	return i.createOrUpdateIdentityProvider(ctx, identityProvider, false)
+}
+
+func (i *identityProviderClient) createOrUpdateIdentityProvider(ctx context.Context, identityProvider *miniov1alpha1.IdentityProvider, update bool) error {
 	cfgType := madmin.OpenidIDPCfg
 
 	name := identityProvider.GetIdentityProviderName()
-	var input []string
-
-	if identityProvider.Spec.ForProvider.ClientId != "" {
-		clientId := "client_id=" + identityProvider.Spec.ForProvider.ClientId
-		input = append(input, clientId)
-	}
-	if identityProvider.Spec.ForProvider.ClientSecret != "" {
-		clientSecret := "client_secret=" + identityProvider.Spec.ForProvider.ClientSecret
-		input = append(input, clientSecret)
-	}
-	if identityProvider.Spec.ForProvider.ConfigUrl != "" {
-		configUrl := "config_url=" + identityProvider.Spec.ForProvider.ConfigUrl
-		input = append(input, configUrl)
-	}
-	if identityProvider.Spec.ForProvider.Scopes != "" {
-		scopes := "scopes=" + identityProvider.Spec.ForProvider.Scopes
-		input = append(input, scopes)
-	}
-	if identityProvider.Spec.ForProvider.RedirectUrl != "" {
-		redirectUrl := "redirect_uri=" + identityProvider.Spec.ForProvider.RedirectUrl
-		input = append(input, redirectUrl)
-	}
-	if identityProvider.Spec.ForProvider.DisplayName != "" {
-		displayName := "display_name=" + identityProvider.Spec.ForProvider.DisplayName
-		input = append(input, displayName)
-	}
-	if identityProvider.Spec.ForProvider.ClaimName != "" {
-		claimName := "claim_name=" + identityProvider.Spec.ForProvider.ClaimName
-		input = append(input, claimName)
-	}
-	if identityProvider.Spec.ForProvider.ClaimUserInfo != "" {
-		claimUserInfo := "claim_userinfo=" + identityProvider.Spec.ForProvider.ClaimUserInfo
-		input = append(input, claimUserInfo)
-	}
-	if identityProvider.Spec.ForProvider.RedirectUriDynamic != "" {
-		redirectUriDynamic := "redirect_uri_dynamic=" + identityProvider.Spec.ForProvider.RedirectUriDynamic
-		input = append(input, redirectUriDynamic)
+	var input = []string{
+		"client_id=" + identityProvider.Spec.ForProvider.ClientId,
+		"client_secret=" + identityProvider.Spec.ForProvider.ClientSecret,
+		"config_url=" + identityProvider.Spec.ForProvider.ConfigUrl,
+		"scopes=" + identityProvider.Spec.ForProvider.Scopes,
+		"redirect_uri=" + identityProvider.Spec.ForProvider.RedirectUrl,
+		"display_name=" + identityProvider.Spec.ForProvider.DisplayName,
+		"claim_name=" + identityProvider.Spec.ForProvider.ClaimName,
+		"claim_userinfo=" + identityProvider.Spec.ForProvider.ClaimUserInfo,
+		"redirect_uri_dynamic=" + identityProvider.Spec.ForProvider.RedirectUriDynamic,
 	}
 
 	cfgData := strings.Join(input, " ")
 
-	restart, err := i.ma.AddOrUpdateIDPConfig(ctx, cfgType, name, cfgData, false)
+	restart, err := i.ma.AddOrUpdateIDPConfig(ctx, cfgType, name, cfgData, update)
 	if err != nil {
 		return err
 	} else if restart {

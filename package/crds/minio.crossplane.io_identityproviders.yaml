@@ -27,6 +27,12 @@ spec:
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
+    - jsonPath: .metadata.annotations.crossplane\.io/external-name
+      name: External Name
+      type: string
+    - jsonPath: .status.atProvider.displayName
+      name: Display Name
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -72,7 +78,7 @@ spec:
                       Specify the name of the JWT Claim MinIO uses to identify the policies to attach to the authenticated user.
                       The claim can contain one or more comma-separated policy names to attach to the user.
                       The claim must contain at least one policy for the user to have any permissions on the MinIO server.
-                      See https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#claim-name
+                      See: https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#claim-name
                       Defaults to `policy` if unset.
                     type: string
                   claimUserInfo:
@@ -80,28 +86,28 @@ spec:
                     description: |-
                       Allow MinIO to fetch claims from the UserInfo Endpoint for the authenticated user.
                       Valid values are `on` or `off`.
-                      See https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#user-info
+                      See: https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#user-info
                       Defaults to `off` if unset.
                     type: string
                   clientId:
                     description: |-
                       Specify the unique public identifier MinIO uses when authenticating user credentials against the OIDC compatible provider.
-                      See https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#client-id
+                      See: https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#client-id
                     type: string
                   clientSecret:
                     description: |-
                       Specify the client secret MinIO uses when authenticating user credentials against the OIDC compatible provider. This field may be optional depending on the provider.
-                      See https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#client-secret
+                      See: https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#client-secret
                     type: string
                   configUrl:
                     description: |-
                       Specify the URL for the OIDC compatible provider discovery document.
-                      See https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#config-url
+                      See: https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#config-url
                     type: string
                   displayName:
                     description: |-
                       Specify the user-facing name the MinIO Console displays on the login screen.
-                      See https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#display-name
+                      See: https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#display-name
                     type: string
                   name:
                     description: |-
@@ -113,19 +119,19 @@ spec:
                     description: |-
                       The MinIO Console defaults to using the hostname of the node making the authentication request as part of the redirect URI provided to the OIDC provider. For MinIO deployments behind a load balancer using a round-robin protocol, this may result in the load balancer returning the response to a different MinIO Node than the originating client.
                       Specify this option as `on` to direct the MinIO Console to use the Host header of the originating request to construct the redirect URI passed to the OIDC provider.
-                      See https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#dynamic-uri-redirect
+                      See: https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#dynamic-uri-redirect
                       Defaults to `off`.
                     type: string
                   redirectUrl:
                     description: |-
                       Specify the Fully Qualified Domain Name (FQDN) the MinIO Console listens for incoming connections on.
-                      See https://min.io/docs/minio/linux/reference/minio-server/settings/console.html#envvar.MINIO_BROWSER_REDIRECT_URL
+                      See: https://min.io/docs/minio/linux/reference/minio-server/settings/console.html#envvar.MINIO_BROWSER_REDIRECT_URL
                     type: string
                   scopes:
                     default: openid,profile,email
                     description: |-
                       Scopes specify a comma-separated list of scopes.
-                      See https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#scopes
+                      See: https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#scopes
                       Defaults to `openid,profile,email` if unset.
                     type: string
                 type: object
@@ -332,9 +338,42 @@ spec:
             properties:
               atProvider:
                 properties:
-                  identityProvider:
-                    description: IdentityProvider is actual identity provider name
-                      created in MinIO.
+                  claimName:
+                    description: Name of the JWT Claim MinIO uses to identify the
+                      policies to attach to the authenticated user.
+                    type: string
+                  claimUserInfo:
+                    description: Allow MinIO to fetch claims from the UserInfo Endpoint
+                      for the authenticated user.
+                    type: string
+                  clientId:
+                    description: Unique public identifier MinIO uses when authenticating
+                      user credentials against the OIDC compatible provider.
+                    type: string
+                  configUrl:
+                    description: URL for the OIDC compatible provider discovery document.
+                    type: string
+                  displayName:
+                    description: User-facing name the MinIO Console displays on the
+                      login screen.
+                    type: string
+                  name:
+                    description: Name of the identity provider.
+                    type: string
+                  redirectUriDynamic:
+                    description: The MinIO Console defaults to using the hostname
+                      of the node making the authentication request as part of the
+                      redirect URI provided to the OIDC provider. For MinIO deployments
+                      behind a load balancer using a round-robin protocol, this may
+                      result in the load balancer returning the response to a different
+                      MinIO Node than the originating client.
+                    type: string
+                  redirectUrl:
+                    description: Fully Qualified Domain Name (FQDN) the MinIO Console
+                      listens for incoming connections on.
+                    type: string
+                  scopes:
+                    description: Comma-separated ist of scopes.
                     type: string
                 type: object
               conditions:

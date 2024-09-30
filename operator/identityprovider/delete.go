@@ -3,6 +3,7 @@ package identityprovider
 import (
 	"context"
 
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/event"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/minio/madmin-go/v3"
@@ -19,6 +20,8 @@ func (i *identityProviderClient) Delete(ctx context.Context, mg resource.Managed
 		return errNotIdentityProvider
 	}
 
+	identityProvider.SetConditions(xpv1.Deleting())
+
 	err := i.deleteIdentityProvider(ctx, identityProvider)
 	if err != nil {
 		return err
@@ -33,7 +36,7 @@ func (i *identityProviderClient) emitDeletionEvent(identityProvider *miniov1alph
 	i.recorder.Event(identityProvider, event.Event{
 		Type:    event.TypeNormal,
 		Reason:  "Deleted",
-		Message: "IdentityProvider deleted",
+		Message: "Identity Provider deleted",
 	})
 }
 
