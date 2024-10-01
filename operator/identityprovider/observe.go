@@ -9,7 +9,12 @@ import (
 	"github.com/minio/madmin-go/v3"
 	"github.com/pkg/errors"
 	miniov1alpha1 "github.com/vshn/provider-minio/apis/minio/v1alpha1"
+	"github.com/vshn/provider-minio/operator/minioutil"
 	controllerruntime "sigs.k8s.io/controller-runtime"
+)
+
+const (
+	ClientSecretKeyName string = "CLIENT_SECRET"
 )
 
 func (i *identityProviderClient) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -30,7 +35,7 @@ func (i *identityProviderClient) Observe(ctx context.Context, mg resource.Manage
 	identityProviderName := identityProvider.GetIdentityProviderName()
 	for _, idp := range identityProviderList {
 		if idp.Name == identityProviderName {
-			upToDate, err := i.IDPConfigUpToDate(ctx, cfgType, identityProviderName, identityProvider)
+			upToDate, err := i.idpConfigUpToDate(ctx, cfgType, identityProviderName, identityProvider)
 			if err != nil {
 				return managed.ExternalObservation{}, err
 			}
@@ -40,6 +45,7 @@ func (i *identityProviderClient) Observe(ctx context.Context, mg resource.Manage
 				ClaimName:          identityProvider.Spec.ForProvider.ClaimName,
 				ClaimUserInfo:      identityProvider.Spec.ForProvider.ClaimUserInfo,
 				ClientId:           identityProvider.Spec.ForProvider.ClientId,
+				ClientSecretHash:   identityProvider.Status.AtProvider.ClientSecretHash, // Re-applying the existing hash to avoid overwriting it with empty value that leads to endless loops
 				ConfigUrl:          identityProvider.Spec.ForProvider.ConfigUrl,
 				DisplayName:        identityProvider.Spec.ForProvider.DisplayName,
 				RedirectUrl:        identityProvider.Spec.ForProvider.RedirectUrl,
@@ -47,7 +53,9 @@ func (i *identityProviderClient) Observe(ctx context.Context, mg resource.Manage
 				Scopes:             identityProvider.Spec.ForProvider.Scopes,
 			}
 
-			identityProvider.SetConditions(xpv1.Available())
+			if upToDate {
+				identityProvider.SetConditions(xpv1.Available())
+			}
 
 			return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: upToDate}, nil
 		}
@@ -56,8 +64,9 @@ func (i *identityProviderClient) Observe(ctx context.Context, mg resource.Manage
 	return managed.ExternalObservation{}, nil
 }
 
-func (i *identityProviderClient) IDPConfigUpToDate(ctx context.Context, cfgType, cfgName string, identityProvider *miniov1alpha1.IdentityProvider) (bool, error) {
+func (i *identityProviderClient) idpConfigUpToDate(ctx context.Context, cfgType, cfgName string, identityProvider *miniov1alpha1.IdentityProvider) (bool, error) {
 	// Returned config doesn't include client_secret
+	// Which is why we add that value as hash in `status.atProvider` for comparison
 	idpConfig, err := i.ma.GetIDPConfig(ctx, cfgType, cfgName)
 	if err != nil {
 		return false, errors.Wrap(err, "cannot get identity provider config")
@@ -69,7 +78,7 @@ func (i *identityProviderClient) IDPConfigUpToDate(ctx context.Context, cfgType,
 		"client_id":            identityProvider.Spec.ForProvider.ClientId,
 		"config_url":           identityProvider.Spec.ForProvider.ConfigUrl,
 		"display_name":         identityProvider.Spec.ForProvider.DisplayName,
-		"enable":               "on", // Assuming "enable" should be "on" if not "off"
+		"enable":               "on",
 		"redirect_uri":         identityProvider.Spec.ForProvider.RedirectUrl,
 		"redirect_uri_dynamic": identityProvider.Spec.ForProvider.RedirectUriDynamic,
 		"scopes":               identityProvider.Spec.ForProvider.Scopes,
@@ -103,5 +112,33 @@ func (i *identityProviderClient) IDPConfigUpToDate(ctx context.Context, cfgType,
 		return false, nil
 	}
 
+	clientSecret, err := i.getClientSecret(ctx, identityProvider)
+	if err != nil {
+		return false, err
+	}
+
+	hashedClientSecret, err := i.hashSecret(clientSecret)
+	if err != nil {
+		return false, err
+	}
+
+	if !i.secretHashMatch(identityProvider, hashedClientSecret) {
+		return false, nil
+	}
+
 	return true, nil
+}
+
+func (i *identityProviderClient) getClientSecret(ctx context.Context, identityProvider *miniov1alpha1.IdentityProvider) (string, error) {
+	if identityProvider.Spec.ForProvider.ClientSecretRef != (xpv1.SecretKeySelector{}) {
+		secret, err := minioutil.ExtractDataFromSecret(ctx, i.kube, identityProvider.Spec.ForProvider.ClientSecretRef.Name, identityProvider.Spec.ForProvider.ClientSecretRef.Namespace)
+		if err != nil {
+			return "", err
+		}
+		return string(secret.Data[identityProvider.Spec.ForProvider.ClientSecretRef.Key]), nil
+	} else if identityProvider.Spec.ForProvider.ClientSecret != "" {
+		return identityProvider.Spec.ForProvider.ClientSecret, nil
+	}
+
+	return "", nil
 }

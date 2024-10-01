@@ -13,7 +13,7 @@ import (
 
 func (i *identityProviderClient) Delete(ctx context.Context, mg resource.Managed) error {
 	log := controllerruntime.LoggerFrom(ctx)
-	log.Info("deleting resource")
+	log.V(1).Info("deleting resource")
 
 	identityProvider, ok := mg.(*miniov1alpha1.IdentityProvider)
 	if !ok {

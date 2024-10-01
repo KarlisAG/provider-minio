@@ -98,7 +98,28 @@ spec:
                     description: |-
                       Specify the client secret MinIO uses when authenticating user credentials against the OIDC compatible provider. This field may be optional depending on the provider.
                       See: https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#client-secret
+                      Mutually exclusive with `clientSecretRef`.
                     type: string
+                  clientSecretRef:
+                    description: |-
+                      Specify the Secret name and namespace containing the client secret MinIO uses when authenticating user credentials against the OIDC compatible provider.
+                      See: https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#client-secret
+                      Mutually exclusive with `clientSecret`.
+                    properties:
+                      key:
+                        description: The key to select.
+                        type: string
+                      name:
+                        description: Name of the secret.
+                        type: string
+                      namespace:
+                        description: Namespace of the secret.
+                        type: string
+                    required:
+                    - key
+                    - name
+                    - namespace
+                    type: object
                   configUrl:
                     description: |-
                       Specify the URL for the OIDC compatible provider discovery document.
@@ -349,6 +370,9 @@ spec:
                   clientId:
                     description: Unique public identifier MinIO uses when authenticating
                       user credentials against the OIDC compatible provider.
+                    type: string
+                  clientSecretHash:
+                    description: Sha256 value of the client secret.
                     type: string
                   configUrl:
                     description: URL for the OIDC compatible provider discovery document.

@@ -28,6 +28,7 @@ type connector struct {
 type identityProviderClient struct {
 	ma       *madmin.AdminClient
 	recorder event.Recorder
+	kube     client.Client
 }
 
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
@@ -57,6 +58,7 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 	ic := &identityProviderClient{
 		ma:       ma,
 		recorder: c.recorder,
+		kube:     c.kube,
 	}
 
 	return ic, nil

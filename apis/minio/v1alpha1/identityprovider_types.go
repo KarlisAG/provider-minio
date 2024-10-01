@@ -46,6 +46,9 @@ type IdentityProviderProviderStatus struct {
 	// Unique public identifier MinIO uses when authenticating user credentials against the OIDC compatible provider.
 	ClientId string `json:"clientId,omitempty"`
 
+	// Sha256 value of the client secret.
+	ClientSecretHash string `json:"clientSecretHash,omitempty"`
+
 	// URL for the OIDC compatible provider discovery document.
 	ConfigUrl string `json:"configUrl,omitempty"`
 
@@ -77,10 +80,17 @@ type IdentityProviderParameters struct {
 	// See: https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#client-id
 	ClientId string `json:"clientId,omitempty"`
 
-	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Optional
 	// Specify the client secret MinIO uses when authenticating user credentials against the OIDC compatible provider. This field may be optional depending on the provider.
 	// See: https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#client-secret
+	// Mutually exclusive with `clientSecretRef`.
 	ClientSecret string `json:"clientSecret,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// Specify the Secret name and namespace containing the client secret MinIO uses when authenticating user credentials against the OIDC compatible provider.
+	// See: https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#client-secret
+	// Mutually exclusive with `clientSecret`.
+	ClientSecretRef xpv1.SecretKeySelector `json:"clientSecretRef,omitempty"`
 
 	// +kubebuilder:validation:Required
 	// Specify the URL for the OIDC compatible provider discovery document.
@@ -93,6 +103,7 @@ type IdentityProviderParameters struct {
 	// Defaults to `openid,profile,email` if unset.
 	Scopes string `json:"scopes,omitempty"`
 
+	// +kubebuilder:validation:Optional
 	// Specify the Fully Qualified Domain Name (FQDN) the MinIO Console listens for incoming connections on.
 	// See: https://min.io/docs/minio/linux/reference/minio-server/settings/console.html#envvar.MINIO_BROWSER_REDIRECT_URL
 	RedirectUrl string `json:"redirectUrl,omitempty"`
@@ -101,6 +112,7 @@ type IdentityProviderParameters struct {
 	// Defaults to `metadata.name` if unset.
 	Name string `json:"name,omitempty"`
 
+	// +kubebuilder:validation:Optional
 	// Specify the user-facing name the MinIO Console displays on the login screen.
 	// See: https://min.io/docs/minio/linux/reference/minio-server/settings/iam/openid.html#display-name
 	DisplayName string `json:"displayName,omitempty"`

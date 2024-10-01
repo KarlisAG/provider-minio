@@ -2,6 +2,8 @@ package identityprovider
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"strings"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
@@ -48,10 +50,15 @@ func (i *identityProviderClient) createIdentityProvider(ctx context.Context, ide
 func (i *identityProviderClient) createOrUpdateIdentityProvider(ctx context.Context, identityProvider *miniov1alpha1.IdentityProvider, update bool) error {
 	cfgType := madmin.OpenidIDPCfg
 
+	clientSecret, err := i.getClientSecret(ctx, identityProvider)
+	if err != nil {
+		return err
+	}
+
 	name := identityProvider.GetIdentityProviderName()
 	var input = []string{
 		"client_id=" + identityProvider.Spec.ForProvider.ClientId,
-		"client_secret=" + identityProvider.Spec.ForProvider.ClientSecret,
+		"client_secret=" + clientSecret,
 		"config_url=" + identityProvider.Spec.ForProvider.ConfigUrl,
 		"scopes=" + identityProvider.Spec.ForProvider.Scopes,
 		"redirect_uri=" + identityProvider.Spec.ForProvider.RedirectUrl,
@@ -75,5 +82,42 @@ func (i *identityProviderClient) createOrUpdateIdentityProvider(ctx context.Cont
 		}
 	}
 
+	err = i.setHashValue(identityProvider, clientSecret)
+	if err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func (i *identityProviderClient) setHashValue(identityProvider *miniov1alpha1.IdentityProvider, secret string) error {
+	hashedSecret, err := i.hashSecret(secret)
+	if err != nil {
+		return err
+	}
+
+	if !i.secretHashMatch(identityProvider, hashedSecret) {
+		identityProvider.Status.AtProvider.ClientSecretHash = hashedSecret
+	}
+
+	return nil
+}
+
+func (i *identityProviderClient) hashSecret(secret string) (string, error) {
+	hash := sha256.New()
+	_, err := hash.Write([]byte(secret))
+	if err != nil {
+		return "", err
+	}
+
+	hashedSecret := hex.EncodeToString(hash.Sum(nil))
+	return hashedSecret, nil
+}
+
+func (i *identityProviderClient) secretHashMatch(identityProvider *miniov1alpha1.IdentityProvider, secretHash string) bool {
+	if identityProvider.Status.AtProvider.ClientSecretHash == secretHash {
+		return true
+	} else {
+		return false
+	}
 }
