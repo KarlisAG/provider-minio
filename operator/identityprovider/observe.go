@@ -90,6 +90,7 @@ func (i *identityProviderClient) idpConfigUpToDate(ctx context.Context, cfgType,
 		"claim_name":   false,
 		"display_name": false,
 		"redirect_uri": false,
+		"scopes":       false,
 	}
 
 	for _, config := range idpConfig.Info {
@@ -106,12 +107,6 @@ func (i *identityProviderClient) idpConfigUpToDate(ctx context.Context, cfgType,
 		}
 	}
 
-	if (identityProvider.Spec.ForProvider.ClaimName != "" && !presentKeys["claim_name"]) ||
-		(identityProvider.Spec.ForProvider.DisplayName != "" && !presentKeys["display_name"]) ||
-		(identityProvider.Spec.ForProvider.RedirectUrl != "" && !presentKeys["redirect_uri"]) {
-		return false, nil
-	}
-
 	clientSecret, err := i.getClientSecret(ctx, identityProvider)
 	if err != nil {
 		return false, err
@@ -123,6 +118,15 @@ func (i *identityProviderClient) idpConfigUpToDate(ctx context.Context, cfgType,
 	}
 
 	if !i.secretHashMatch(identityProvider, hashedClientSecret) {
+		return false, nil
+	}
+
+	// Checking claimName separately because if we the default value is used, we don't get it from GetIDPConfig() and it would be marked as not up to date
+	// And because of that we end up in endless update loop
+	if ((identityProvider.Spec.ForProvider.ClaimName != "" && identityProvider.Spec.ForProvider.ClaimName != "policy") && !presentKeys["claim_name"]) ||
+		(identityProvider.Spec.ForProvider.DisplayName != "" && !presentKeys["display_name"]) ||
+		(identityProvider.Spec.ForProvider.RedirectUrl != "" && !presentKeys["redirect_uri"]) ||
+		(identityProvider.Spec.ForProvider.Scopes != "" && !presentKeys["scopes"]) {
 		return false, nil
 	}
 
