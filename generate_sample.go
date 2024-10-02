@@ -18,6 +18,7 @@ import (
 
 	"github.com/vshn/provider-minio/apis"
 	miniov1 "github.com/vshn/provider-minio/apis/minio/v1"
+	miniov1alpha1 "github.com/vshn/provider-minio/apis/minio/v1alpha1"
 	providerv1 "github.com/vshn/provider-minio/apis/provider/v1"
 	"github.com/vshn/provider-minio/operator/minioutil"
 
@@ -39,6 +40,7 @@ func main() {
 	generateSecretSample()
 	generateUserSample()
 	generatePolicySample()
+	generateGroupSample()
 }
 
 func generateBucketSample() {
@@ -158,6 +160,32 @@ func newPolicySample() *miniov1.Policy {
 			},
 			ForProvider: miniov1.PolicyParameters{
 				AllowBucket: "bucket-local-dev",
+			},
+		},
+	}
+}
+
+func generateGroupSample() {
+	spec := newGroupSample()
+	serialize(spec, true)
+}
+
+func newGroupSample() *miniov1alpha1.Group {
+	return &miniov1alpha1.Group{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: miniov1alpha1.GroupGroupVersionKind.GroupVersion().String(),
+			Kind:       miniov1alpha1.GroupKind,
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "mygroup",
+		},
+		Spec: miniov1alpha1.GroupSpec{
+			ResourceSpec: xpv1.ResourceSpec{
+				ProviderConfigReference: &xpv1.Reference{Name: "provider-config"},
+			},
+			ForProvider: miniov1alpha1.GroupParameters{
+				Users:    []string{"devuser"},
+				Policies: []string{"mypolicy"},
 			},
 		},
 	}

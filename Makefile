@@ -130,5 +130,6 @@ webhook-debug:
 	yq e "del(.webhooks[0].clientConfig.service) | .webhooks[0].clientConfig.caBundle |= \"$$cabundle\" | .webhooks[0].clientConfig.url |= \"https://$$HOSTIP:9443//validate-minio-crossplane-io-v1-bucket\"" - | \
 	yq e "del(.webhooks[1].clientConfig.service) | .webhooks[1].clientConfig.caBundle |= \"$$cabundle\" | .webhooks[1].clientConfig.url |= \"https://$$HOSTIP:9443//validate-minio-crossplane-io-v1-policy\"" - | \
 	yq e "del(.webhooks[2].clientConfig.service) | .webhooks[2].clientConfig.caBundle |= \"$$cabundle\" | .webhooks[2].clientConfig.url |= \"https://$$HOSTIP:9443//validate-minio-crossplane-io-v1-user\"" - | \
+	yq e "del(.webhooks[2].clientConfig.service) | .webhooks[3].clientConfig.caBundle |= \"$$cabundle\" | .webhooks[3].clientConfig.url |= \"https://$$HOSTIP:9443//validate-minio-crossplane-io-v1alpha1-group\"" - | \
 	kubectl apply -f - && \
 	kubectl annotate validatingwebhookconfigurations.admissionregistration.k8s.io validating-webhook-configuration kubectl.kubernetes.io/last-applied-configuration-

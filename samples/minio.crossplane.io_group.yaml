@@ -1,0 +1,15 @@
+apiVersion: minio.crossplane.io/v1alpha1
+kind: Group
+metadata:
+  creationTimestamp: null
+  name: mygroup
+spec:
+  forProvider:
+    policies:
+    - mypolicy
+    users:
+    - devuser
+  providerConfigRef:
+    name: provider-config
+status:
+  atProvider: {}
