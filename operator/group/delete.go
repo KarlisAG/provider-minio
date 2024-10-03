@@ -21,7 +21,22 @@ func (g *groupClient) Delete(ctx context.Context, mg resource.Managed) error {
 
 	group.SetConditions(xpv1.Deleting())
 
-	err := g.deleteGroup(ctx, group)
+	groupName := group.GetGroupName()
+	groupDescription, err := g.ma.GetGroupDescription(ctx, groupName)
+	if err != nil {
+		return err
+	}
+
+	// We are passing all users that are currently in MinIO and not what we have declared
+	// This is to avoid the potential situation, where just before deletion a user is manually added/deleted in the group and that mismatch could cause errors
+	err = g.removeUsersFromGroup(ctx, groupName, groupDescription.Members)
+	if err != nil {
+		return err
+	}
+
+	// We need to run basically the same underlying function again, because a group can't be deleted if it has any users still attached to it
+	// So we first delete all users then run the same function again to delete the group, as it shouldn't have any users attached to it anymore
+	err = g.deleteGroup(ctx, groupName)
 	if err != nil {
 		return err
 	}
@@ -40,6 +55,11 @@ func (g *groupClient) emitDeletionEvent(group *miniov1alpha1.Group) error {
 	return nil
 }
 
-func (g *groupClient) deleteGroup(ctx context.Context, group *miniov1alpha1.Group) error {
-	return g.createUpdateOrDeleteGroup(ctx, group, true)
+// This function is used in update.go as it needs to remove users that are not declared in the CR
+func (g *groupClient) removeUsersFromGroup(ctx context.Context, groupName string, users []string) error {
+	return g.createUpdateOrDeleteGroup(ctx, groupName, users, true)
+}
+
+func (g *groupClient) deleteGroup(ctx context.Context, groupName string) error {
+	return g.createUpdateOrDeleteGroup(ctx, groupName, nil, true)
 }

@@ -35,6 +35,16 @@ func (v *Validator) ValidateUpdate(_ context.Context, oldObj, newObj runtime.Obj
 	if !ok {
 		return nil, errNotGroup
 	}
+	oldGroup, ok := oldObj.(*miniov1alpha1.Group)
+	if !ok {
+		return nil, errNotGroup
+	}
+
+	// It is not forbidden to change the group name
+	// It is blocked here because, if it is changed then in MinIO a new group will appear, but the old one won't get deleted
+	if newGroup.GetGroupName() != oldGroup.GetGroupName() {
+		return nil, field.Invalid(field.NewPath("spec", "forProvider", "name"), newGroup.GetGroupName(), "Changing the group name is not allowed")
+	}
 	v.log.V(1).Info("Validate update")
 
 	return nil, v.validateGroup(newGroup)

@@ -25,26 +25,37 @@ func (g *groupClient) Update(ctx context.Context, mg resource.Managed) (managed.
 
 	group.SetConditions(miniov1.Updating())
 
-	err := g.updateGroup(ctx, group)
-	if err != nil {
-		return managed.ExternalUpdate{}, err
-	}
-
 	groupName := group.GetGroupName()
 	groupDescription, err := g.ma.GetGroupDescription(ctx, groupName)
 	if err != nil {
 		return managed.ExternalUpdate{}, err
 	}
 
+	// To remove users that are not declared in the CR
+	if excessUsers := g.nonMatchingSliceEntries(group.Spec.ForProvider.Users, groupDescription.Members); len(excessUsers) > 0 {
+		err = g.removeUsersFromGroup(ctx, groupName, excessUsers)
+		if err != nil {
+			return managed.ExternalUpdate{}, err
+		}
+	}
+
+	err = g.updateGroup(ctx, groupName, group.Spec.ForProvider.Users)
+	if err != nil {
+		return managed.ExternalUpdate{}, err
+	}
+
 	if !g.policiesMatch(group, groupDescription.Policy) {
+		// To remove policies that are not declared in the CR
 		err = g.detachIncorrectPolicies(ctx, group.Spec.ForProvider.Policies, groupDescription.Policy, groupName)
 		if err != nil {
 			return managed.ExternalUpdate{}, err
 		}
 
-		err = g.attachPolicy(ctx, group)
-		if err != nil {
-			return managed.ExternalUpdate{}, err
+		if len(group.Spec.ForProvider.Policies) > 0 {
+			err = g.attachPolicy(ctx, group)
+			if err != nil {
+				return managed.ExternalUpdate{}, err
+			}
 		}
 	}
 
@@ -60,14 +71,14 @@ func (g *groupClient) emitUpdateEvent(group *miniov1alpha1.Group) error {
 	return nil
 }
 
-func (g *groupClient) updateGroup(ctx context.Context, group *miniov1alpha1.Group) error {
-	return g.createUpdateOrDeleteGroup(ctx, group, false)
+func (g *groupClient) updateGroup(ctx context.Context, groupName string, users []string) error {
+	return g.createUpdateOrDeleteGroup(ctx, groupName, users, false)
 }
 
 func (g *groupClient) detachIncorrectPolicies(ctx context.Context, expectedPolicies []string, currentPolicies, groupName string) error {
 	policies := strings.Split(currentPolicies, ",")
 
-	policiesToDetach := g.nonMatchingPolicies(expectedPolicies, policies)
+	policiesToDetach := g.nonMatchingSliceEntries(expectedPolicies, policies)
 
 	policyRequest := madmin.PolicyAssociationReq{
 		Group:    groupName,
@@ -77,12 +88,15 @@ func (g *groupClient) detachIncorrectPolicies(ctx context.Context, expectedPolic
 	return nil
 }
 
-func (g *groupClient) nonMatchingPolicies(expectedPolicies, currentPolicies []string) []string {
-	nonMatchingPolicies := []string{}
-	for _, policy := range currentPolicies {
-		if !slices.Contains(expectedPolicies, policy) {
-			nonMatchingPolicies = append(nonMatchingPolicies, policy)
+// nonMatchingSliceEntries returns a new slice of strings based on the currentSliceEntries that are not present in the expectedSliceEntries
+// This is required for policy and user cleanup as functions provided by madmin allow adding policies or users
+// But if anything from the list is already present, an error will be thrown
+func (g *groupClient) nonMatchingSliceEntries(expectedSliceEntries, currentSliceEntries []string) []string {
+	nonMatchingSliceEntries := []string{}
+	for _, policy := range currentSliceEntries {
+		if !slices.Contains(expectedSliceEntries, policy) {
+			nonMatchingSliceEntries = append(nonMatchingSliceEntries, policy)
 		}
 	}
-	return nonMatchingPolicies
+	return nonMatchingSliceEntries
 }

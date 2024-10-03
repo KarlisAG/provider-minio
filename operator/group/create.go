@@ -24,14 +24,18 @@ func (g *groupClient) Create(ctx context.Context, mg resource.Managed) (managed.
 
 	group.SetConditions(xpv1.Creating())
 
-	err := g.createGroup(ctx, group)
+	groupName := group.GetGroupName()
+
+	err := g.createGroup(ctx, groupName, group.Spec.ForProvider.Users)
 	if err != nil {
 		return managed.ExternalCreation{}, err
 	}
 
-	err = g.attachPolicy(ctx, group)
-	if err != nil {
-		return managed.ExternalCreation{}, err
+	if len(group.Spec.ForProvider.Policies) > 0 {
+		err = g.attachPolicy(ctx, group)
+		if err != nil {
+			return managed.ExternalCreation{}, err
+		}
 	}
 
 	return managed.ExternalCreation{}, g.emitCreationEvent(group)
@@ -46,15 +50,16 @@ func (g *groupClient) emitCreationEvent(group *miniov1alpha1.Group) error {
 	return nil
 }
 
-func (g *groupClient) createGroup(ctx context.Context, group *miniov1alpha1.Group) error {
-	return g.createUpdateOrDeleteGroup(ctx, group, false)
+func (g *groupClient) createGroup(ctx context.Context, groupName string, users []string) error {
+	return g.createUpdateOrDeleteGroup(ctx, groupName, users, false)
 }
 
-func (g *groupClient) createUpdateOrDeleteGroup(ctx context.Context, group *miniov1alpha1.Group, remove bool) error {
-	groupName := group.GetGroupName()
+// To avoid repetitiveness, this function is called from create.go, update.go and delete.go
+// That is because the imported madmin package only has a single underlying function that achieves such group (and user within) manipulation
+func (g *groupClient) createUpdateOrDeleteGroup(ctx context.Context, groupName string, users []string, remove bool) error {
 	groupAddRemove := madmin.GroupAddRemove{
 		Group:    groupName,
-		Members:  group.Spec.ForProvider.Users,
+		Members:  users,
 		IsRemove: remove,
 	}
 
@@ -65,32 +70,27 @@ func (g *groupClient) createUpdateOrDeleteGroup(ctx context.Context, group *mini
 	return nil
 }
 
+// This function is also called from update.go because madmin doesn't have an option to update attached policies, only add or remove
 func (g *groupClient) attachPolicy(ctx context.Context, group *miniov1alpha1.Group) error {
 	groupName := group.GetGroupName()
 	groupDescription, err := g.ma.GetGroupDescription(ctx, groupName)
 	if err != nil {
 		return err
 	}
-	log := controllerruntime.LoggerFrom(ctx)
+
 	var policiesToAttach []string
-	log.Info("groupDescription.Policy: ", "groupDescription.Policy", groupDescription.Policy)
-	log.Info("group.Spec.ForProvider.Policies: ", "group.Spec.ForProvider.Policies", group.Spec.ForProvider.Policies)
+	// If the group has policies attached, we need to strip out the ones that are also declared in the CR to avoid errors
 	if groupDescription.Policy != "" {
 		policies := strings.Split(groupDescription.Policy, ",")
-		log.Info("policies is not empty")
-		// Stripping out policies that already exist to avoid errors
 		policiesToAttach = stripExistingPolicies(policies, group.Spec.ForProvider.Policies)
 	} else {
-		log.Info("policies is empty")
 		policiesToAttach = group.Spec.ForProvider.Policies
 	}
+
 	policyRequest := madmin.PolicyAssociationReq{
 		Group:    groupName,
 		Policies: policiesToAttach,
 	}
-
-	log.Info("Attaching policies to group")
-	log.Info("Policies to attach: ", "policies", policiesToAttach)
 
 	_, err = g.ma.AttachPolicy(ctx, policyRequest)
 	if err != nil {
@@ -99,11 +99,12 @@ func (g *groupClient) attachPolicy(ctx context.Context, group *miniov1alpha1.Gro
 	return nil
 }
 
+// stripExistingPolicies returns a slice of policies that are not already attached to the group
+// This is required because madmin.AttachPolicy() will return an error if a policy is already attached
 func stripExistingPolicies(existingPolicies, newPolicies []string) []string {
 	policyMap := make(map[string]bool)
 	result := []string{}
 
-	// Add existing policies to the map
 	for _, policy := range existingPolicies {
 		policyMap[policy] = true
 	}

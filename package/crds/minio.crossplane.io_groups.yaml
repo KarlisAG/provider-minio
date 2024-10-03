@@ -294,7 +294,7 @@ spec:
             properties:
               atProvider:
                 properties:
-                  policy:
+                  groupName:
                     description: Name of the group
                     type: string
                 type: object

@@ -43,7 +43,7 @@ type GroupStatus struct {
 
 type GroupProviderStatus struct {
 	// Name of the group
-	Group string `json:"policy,omitempty"`
+	GroupName string `json:"groupName,omitempty"`
 }
 
 type GroupParameters struct {
