@@ -87,14 +87,16 @@ func (g *groupClient) attachPolicy(ctx context.Context, group *miniov1alpha1.Gro
 		policiesToAttach = group.Spec.ForProvider.Policies
 	}
 
-	policyRequest := madmin.PolicyAssociationReq{
-		Group:    groupName,
-		Policies: policiesToAttach,
-	}
+	if len(policiesToAttach) > 0 {
+		policyRequest := madmin.PolicyAssociationReq{
+			Group:    groupName,
+			Policies: policiesToAttach,
+		}
 
-	_, err = g.ma.AttachPolicy(ctx, policyRequest)
-	if err != nil {
-		return err
+		_, err = g.ma.AttachPolicy(ctx, policyRequest)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

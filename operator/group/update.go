@@ -31,6 +31,13 @@ func (g *groupClient) Update(ctx context.Context, mg resource.Managed) (managed.
 		return managed.ExternalUpdate{}, err
 	}
 
+	if groupDescription.Status == "disabled" {
+		err = g.ma.SetGroupStatus(ctx, groupName, madmin.GroupEnabled)
+		if err != nil {
+			return managed.ExternalUpdate{}, err
+		}
+	}
+
 	// To remove users that are not declared in the CR
 	if excessUsers := g.nonMatchingSliceEntries(group.Spec.ForProvider.Users, groupDescription.Members); len(excessUsers) > 0 {
 		err = g.removeUsersFromGroup(ctx, groupName, excessUsers)
@@ -79,12 +86,17 @@ func (g *groupClient) detachIncorrectPolicies(ctx context.Context, expectedPolic
 	policies := strings.Split(currentPolicies, ",")
 
 	policiesToDetach := g.nonMatchingSliceEntries(expectedPolicies, policies)
+	if len(policiesToDetach) > 0 && policiesToDetach[0] != "" {
+		policyRequest := madmin.PolicyAssociationReq{
+			Group:    groupName,
+			Policies: policiesToDetach,
+		}
 
-	policyRequest := madmin.PolicyAssociationReq{
-		Group:    groupName,
-		Policies: policiesToDetach,
+		_, err := g.ma.DetachPolicy(ctx, policyRequest)
+		if err != nil {
+			return err
+		}
 	}
-	g.ma.DetachPolicy(ctx, policyRequest)
 	return nil
 }
 

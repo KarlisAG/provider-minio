@@ -34,6 +34,10 @@ func (g *groupClient) Observe(ctx context.Context, mg resource.Managed) (managed
 				return managed.ExternalObservation{}, err
 			}
 
+			if groupDescription.Status == "disabled" {
+				return managed.ExternalObservation{ResourceExists: true}, nil
+			}
+
 			if (len(groupResource.Spec.ForProvider.Users) > 0 || len(groupDescription.Members) > 0) && !g.usersMatch(groupResource, groupDescription.Members) {
 				return managed.ExternalObservation{ResourceExists: true}, nil
 			}
