@@ -40,3 +40,14 @@ func ExtractDataFromProviderConfig(ctx context.Context, c client.Client, config 
 
 	return secret, tls, parsed, nil
 }
+
+func ExtractDataFromSecret(ctx context.Context, c client.Client, secretName, secretNamespace string) (*corev1.Secret, error) {
+	secret := &corev1.Secret{}
+	key := client.ObjectKey{Name: secretName, Namespace: secretNamespace}
+	err := c.Get(ctx, key, secret)
+	if err != nil {
+		return nil, err
+	}
+
+	return secret, nil
+}

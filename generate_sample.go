@@ -41,6 +41,7 @@ func main() {
 	generateUserSample()
 	generatePolicySample()
 	generateGroupSample()
+	generateIdentityProviderSample()
 }
 
 func generateBucketSample() {
@@ -186,6 +187,33 @@ func newGroupSample() *miniov1alpha1.Group {
 			ForProvider: miniov1alpha1.GroupParameters{
 				Users:    []string{"devuser"},
 				Policies: []string{"mypolicy"},
+			},
+		},
+	}
+}
+
+func generateIdentityProviderSample() {
+	spec := newIdentityProviderSample()
+	serialize(spec, true)
+}
+
+func newIdentityProviderSample() *miniov1alpha1.IdentityProvider {
+	return &miniov1alpha1.IdentityProvider{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: miniov1alpha1.IdentityProviderGroupVersionKind.GroupVersion().String(),
+			Kind:       miniov1alpha1.IdentityProviderKind,
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-identity-provider",
+		},
+		Spec: miniov1alpha1.IdentityProviderSpec{
+			ResourceSpec: xpv1.ResourceSpec{
+				ProviderConfigReference: &xpv1.Reference{Name: "provider-config"},
+			},
+			ForProvider: miniov1alpha1.IdentityProviderParameters{
+				ClientId:     "00000000-0000-0000-0000-00000000",
+				ClientSecret: "superSecretPassword",
+				ConfigUrl:    "http://127.0.0.1",
 			},
 		},
 	}

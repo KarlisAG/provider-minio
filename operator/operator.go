@@ -4,6 +4,7 @@ import (
 	"github.com/vshn/provider-minio/operator/bucket"
 	"github.com/vshn/provider-minio/operator/config"
 	"github.com/vshn/provider-minio/operator/group"
+	"github.com/vshn/provider-minio/operator/identityprovider"
 	"github.com/vshn/provider-minio/operator/policy"
 	"github.com/vshn/provider-minio/operator/user"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -16,6 +17,7 @@ func SetupControllers(mgr ctrl.Manager) error {
 		user.SetupController,
 		policy.SetupController,
 		group.SetupController,
+		identityprovider.SetupController,
 		config.SetupController,
 	} {
 		if err := setup(mgr); err != nil {
@@ -32,6 +34,7 @@ func SetupWebhooks(mgr ctrl.Manager) error {
 		user.SetupWebhook,
 		policy.SetupWebhook,
 		group.SetupWebhook,
+		identityprovider.SetupWebhook,
 	} {
 		if err := setup(mgr); err != nil {
 			return err
